@@ -67,19 +67,10 @@ download_or_update() {
   export PRIVATE_KEY_LOCAL="$PRIVATE_KEY_LOCAL"
   export EXECUTOR_PROCESS_BIDS_ENABLED=true
   export EXECUTOR_ENABLE_BATCH_BIDING=true
-  export EXECUTOR_PROCESS_PENDING_ORDERS_FROM_API=false
+  export EXECUTOR_PROCESS_PENDING_ORDERS_FROM_API=true
   export EXECUTOR_PROCESS_ORDERS_API_ENABLED=false
   export EXECUTOR_ENABLE_BATCH_BIDDING=true
   export EXECUTOR_PROCESS_BIDS_BATCH=true
-export RPC_ENDPOINTS='{ 
-  "l2rn": ["https://t3rn-b2n.blockpi.network/v1/rpc/public", "https://b2n.rpc.caldera.xyz/http"], 
-  "arbt": ["https://arb-sepolia.g.alchemy.com/v2/GZegnJ-NF_-5JIQ-YfpTtEor9qH0BDub", "https://arbitrum-sepolia.drpc.org", "https://sepolia-rollup.arbitrum.io/rpc"], 
-  "bast": ["https://base-sepolia.g.alchemy.com/v2/GZegnJ-NF_-5JIQ-YfpTtEor9qH0BDub", "https://base-sepolia-rpc.publicnode.com", "https://base-sepolia.drpc.or], 
-  "opst": ["https://opt-sepolia.g.alchemy.com/v2/GZegnJ-NF_-5JIQ-YfpTtEor9qH0BDub", "https://sepolia.optimism.io", "https://optimism-sepolia.drpc.org"], 
-  "unit": ["https://unichain-sepolia.g.alchemy.com/v2/GZegnJ-NF_-5JIQ-YfpTtEor9qH0BDub", "https://unichain-sepolia.drpc.org", "https://sepolia.unichain.org"], 
-  "blst": ["https://blast-sepolia.g.alchemy.com/v2/GZegnJ-NF_-5JIQ-YfpTtEor9qH0BDub", "https://sepolia.blast.io", "https://blast-sepolia.drpc.org"], 
-  "mont": ["https://monad-testnet.g.alchemy.com/v2/GZegnJ-NF_-5JIQ-YfpTtEor9qH0BDub", "https://testnet-rpc.monad.xyz"] 
-}'
   export EXECUTOR_MAX_L3_GAS_PRICE=1050
 
   cd $HOME/executor/executor/bin/
