@@ -45,9 +45,9 @@ keep_download() {
 
   read -p "Введите ваш Node ID (но перед этим зайдите по ссылке из гайда на сервере): " NEW_ID
 
-  sed -i "s/0xdbb48499ee7f5db35bcc7f1783f889bacb8d47f6.us.gaianet.network/${NEW_ID}.gaia.domains/g" config.json
+  sed -i "s/0x0aa110d2e3a2f14fc122c849cea06d1bc9ed1c62.us.gaianet.network/${NEW_ID}.gaia.domains/g" config.json
   sed -i 's/const CHUNK_SIZE = 5;/const CHUNK_SIZE = 1;/g' bot_gaia.js
-  sed -i "s|https://0xdbb48499ee7f5db35bcc7f1783f889bacb8d47f6.gaia.domains/v1/chat/completions|$(jq -r '.url' config.json)|g" bot_gaia.js
+  sed -i "s|https://0x0aa110d2e3a2f14fc122c849cea06d1bc9ed1c62.gaia.domains/v1/chat/completions|$(jq -r '.url' config.json)|g" bot_gaia.js
                     
   screen -dmS gaianetnode bash -c '
     echo "Начало выполнения скрипта в screen-сессии"
@@ -82,7 +82,7 @@ update_node() {
 
   cd $HOME/bot/gaianet
 
-  sed -i "s|https://0xdbb48499ee7f5db35bcc7f1783f889bacb8d47f6.us.gaianet.network/v1/chat/completions|$(jq -r '.url' config.json)|g" bot_gaia.js
+  sed -i "s|https://0x0aa110d2e3a2f14fc122c849cea06d1bc9ed1c62.us.gaianet.network/v1/chat/completions|$(jq -r '.url' config.json)|g" bot_gaia.js
 
   sed -i 's/.us.gaianet.network/.gaia.domains/g' config.json
   sed -i 's/.us.gaianet.network/.gaia.domains/g' bot_gaia.js 
