@@ -3,26 +3,26 @@ update_node() {
   delete_node
 
   if [ -d "$HOME/executor" ] || screen -list | grep -q "\.t3rnnode"; then
-    echo 'Папка executor или сессия t3rnnode уже существуют. Установка невозможна. Выберите удалить ноду или выйти из скрипта.'
+    echo 'Папка executor або сесія t3rnnode вже існують. Встановлення неможливе. Оберіть видалити ноду або вийти зі скрипту.'
     return
   fi
 
-  echo 'Начинаю обновление ноды...'
+  echo 'Починаю оновлення ноди...'
 
-  read -p "Введите ваш приватный ключ: " PRIVATE_KEY_LOCAL
+  read -p "Введіть ваш приватний ключ: " PRIVATE_KEY_LOCAL
 
   download_or_update
 }
 
 download_node() {
   if [ -d "$HOME/executor" ] || screen -list | grep -q "\.t3rnnode"; then
-    echo 'Папка executor или сессия t3rnnode уже существуют. Установка невозможна. Выберите удалить ноду или выйти из скрипта.'
+    echo 'Папка executor або сесія t3rnnode вже існують. Встановлення неможливе. Оберіть видалити ноду або вийти зі скрипту.'
     return
   fi
 
-  echo 'Начинаю установку ноды...'
+  echo 'Починаю встановлення ноди...'
 
-  read -p "Введите ваш приватный ключ: " PRIVATE_KEY_LOCAL
+  read -p "Введіть ваш приватний ключ: " PRIVATE_KEY_LOCAL
 
   sudo apt update -y && sudo apt upgrade -y
   sudo apt-get install make screen build-essential software-properties-common curl git nano jq -y
@@ -33,10 +33,10 @@ download_node() {
 download_or_update() {
   cd $HOME
 
-  echo "Выберите вариант установки:"
-  echo "1) Установить последнюю версию"
-  echo "2) Установить конкретную версию"
-  read -p "Введите номер варианта (1 или 2): " CHOICE
+  echo "Оберіть варіант встановлення:"
+  echo "1) Встановити останню версію"
+  echo "2) Встановити конкретну версію"
+  read -p "Введіть номер варіанта (1 або 2): " CHOICE
 
   if [ "$CHOICE" = "1" ]; then
     sudo curl -s https://api.github.com/repos/t3rn/executor-release/releases/latest | \
@@ -45,13 +45,13 @@ download_or_update() {
     sudo tar -xzf executor-linux-*.tar.gz
     sudo rm -rf executor-linux-*.tar.gz
   elif [ "$CHOICE" = "2" ]; then
-    read -p "Введите номер версии (например, 53 для v0.53.0): " VERSION
+    read -p "Введіть номер версії (наприклад, 53 для v0.53.0): " VERSION
     VERSION_FULL="v0.${VERSION}.0"
     sudo wget https://github.com/t3rn/executor-release/releases/download/${VERSION_FULL}/executor-linux-${VERSION_FULL}.tar.gz -O executor-linux.tar.gz
     sudo tar -xzvf executor-linux.tar.gz
     sudo rm -rf executor-linux.tar.gz
   else
-    echo "Неверный выбор. Установка отменена."
+    echo "Невірний вибір. Встановлення скасовано."
     return
   fi
 
@@ -67,16 +67,25 @@ download_or_update() {
   export PRIVATE_KEY_LOCAL="$PRIVATE_KEY_LOCAL"
   export EXECUTOR_PROCESS_BIDS_ENABLED=true
   export EXECUTOR_ENABLE_BATCH_BIDING=true
-  export EXECUTOR_PROCESS_PENDING_ORDERS_FROM_API=true
+  export EXECUTOR_PROCESS_PENDING_ORDERS_FROM_API=false
   export EXECUTOR_PROCESS_ORDERS_API_ENABLED=false
   export EXECUTOR_ENABLE_BATCH_BIDDING=true
   export EXECUTOR_PROCESS_BIDS_BATCH=true
+export RPC_ENDPOINTS='{ 
+  "l2rn": ["https://t3rn-b2n.blockpi.network/v1/rpc/public", "https://b2n.rpc.caldera.xyz/http"], 
+  "arbt": ["https://arb-sepolia.g.alchemy.com/v2/GZegnJ-NF_-5JIQ-YfpTtEor9qH0BDub", "https://arbitrum-sepolia.drpc.org", "https://sepolia-rollup.arbitrum.io/rpc"], 
+  "bast": ["https://base-sepolia.g.alchemy.com/v2/GZegnJ-NF_-5JIQ-YfpTtEor9qH0BDub", "https://base-sepolia-rpc.publicnode.com", "https://base-sepolia.drpc.or], 
+  "opst": ["https://opt-sepolia.g.alchemy.com/v2/GZegnJ-NF_-5JIQ-YfpTtEor9qH0BDub", "https://sepolia.optimism.io", "https://optimism-sepolia.drpc.org"], 
+  "unit": ["https://unichain-sepolia.g.alchemy.com/v2/GZegnJ-NF_-5JIQ-YfpTtEor9qH0BDub", "https://unichain-sepolia.drpc.org", "https://sepolia.unichain.org"], 
+  "blst": ["https://blast-sepolia.g.alchemy.com/v2/GZegnJ-NF_-5JIQ-YfpTtEor9qH0BDub", "https://sepolia.blast.io", "https://blast-sepolia.drpc.org"], 
+  "mont": ["https://monad-testnet.g.alchemy.com/v2/GZegnJ-NF_-5JIQ-YfpTtEor9qH0BDub", "https://testnet-rpc.monad.xyz"] 
+}'
   export EXECUTOR_MAX_L3_GAS_PRICE=1050
 
   cd $HOME/executor/executor/bin/
 
   screen -dmS t3rnnode bash -c '
-    echo "Начало выполнения скрипта в screen-сессии"
+    echo "Початок виконання скрипту в screen-сесії"
 
     cd $HOME/executor/executor/bin/
     ./executor
@@ -84,7 +93,7 @@ download_or_update() {
     exec bash
   '
 
-  echo "Screen сессия 't3rnnode' создана и нода запущена..."
+  echo "Screen-сесія 't3rnnode' створена і нода запущена..."
 }
 
 check_logs() {
@@ -93,31 +102,31 @@ check_logs() {
     sleep 0.1
     
     if [ -f /tmp/screen_log.txt ]; then
-      echo "=== Последние логи t3rnnode ==="
+      echo "=== Останні логи t3rnnode ==="
       echo "----------------------------------------"
       tail -n 40 /tmp/screen_log.txt | awk '{print "\033[0;32m" NR "\033[0m: " $0}'
       echo "----------------------------------------"
-      echo "Логи успешно выведены (время: $(date '+%H:%M:%S %d.%m.%Y'))"
+      echo "Логи успішно виведені (час: $(date '+%H:%M:%S %d.%m.%Y'))"
       rm -f /tmp/screen_log.txt
     else
-      echo "Ошибка: Не удалось получить логи из screen-сессии."
+      echo "Помилка: Не вдалося отримати логи із screen-сесії."
     fi
   else
-    echo "Сессия t3rnnode не найдена."
+    echo "Сесія t3rnnode не знайдена."
   fi
 }
 
 change_fee() {
-    echo 'Начинаю изменение комиссии...'
+    echo 'Починаю зміну комісії...'
 
     if [ ! -d "$HOME/executor" ]; then
-        echo 'Папка executor не найдена. Установите ноду.'
+        echo 'Папку executor не знайдено. Встановіть ноду.'
         return
     fi
 
     session="t3rnnode"
 
-    read -p 'На какой газ GWEI вы хотите изменить? (по стандарту 1050) ' GWEI_SET
+    read -p 'На який газ GWEI ви хочете змінити? (за замовчуванням 1050) ' GWEI_SET
 
     if screen -list | grep -q "\.${session}"; then
       screen -S "${session}" -p 0 -X stuff "^C"
@@ -125,21 +134,21 @@ change_fee() {
       screen -S "${session}" -p 0 -X stuff "export EXECUTOR_MAX_L3_GAS_PRICE=$GWEI_SET\n"
       sleep 1
       screen -S "${session}" -p 0 -X stuff "./executor\n"
-      echo 'Комиссия была изменена.'
+      echo 'Комісію було змінено.'
     else
-      echo "Сессия ${session} не найдена. Газ не может поменяться"
+      echo "Сессия ${session} не найдена. Газ не може бути змінений"
       return
     fi
 }
 
 stop_node() {
-  echo 'Начинаю остановку...'
+  echo 'Починаю зупинку...'
 
   if screen -list | grep -q "\.t3rnnode"; then
     screen -S t3rnnode -p 0 -X stuff "^C"
-    echo "Нода была остановлена."
+    echo "Нода була зупинена."
   else
-    echo "Сессия t3rnnode не найдена."
+    echo "Сесія t3rnnode не знайдена."
   fi
 }
 
@@ -149,12 +158,12 @@ auto_restart_node() {
 
   if screen -list | grep -q "\.$screen_name"; then
     screen -X -S "$screen_name" quit
-    echo "Существующий screen '$screen_name' был остановлен."
+    echo "Існуючий screen '$screen_name' було зупинено."
   fi
 
   cat > "$script_path" << 'EOF'
 restart_node() {
-  echo 'Начинаю перезагрузку...'
+  echo 'Починаю перезавантаження...'
 
   session="t3rnnode"
   
@@ -162,7 +171,7 @@ restart_node() {
     screen -S "${session}" -p 0 -X stuff "^C"
     sleep 1
     screen -S "${session}" -p 0 -X stuff "./executor\n"
-    echo "Нода была перезагружена."
+    echo "Ноду було перезавантажено."
   else
     echo "Сессия ${session} не найдена."
   fi
@@ -179,11 +188,11 @@ EOF
   echo "Screen-сессия '$screen_name' создана, нода будет перезапускаться каждые 2 часа."
 
   (crontab -l 2>/dev/null | grep -v "$script_path"; echo "@reboot screen -dmS $screen_name bash $script_path") | crontab -
-  echo "Задание добавлено в crontab для автозапуска при перезагрузке сервера."
+  echo "Завдання додано до crontab для автозапуску після перезавантаження сервера."
 }
 
 restart_node() {
-  echo 'Начинаю перезагрузку...'
+  echo 'Починаю перезавантаження...'
 
   session="t3rnnode"
   
@@ -191,32 +200,32 @@ restart_node() {
     screen -S "${session}" -p 0 -X stuff "^C"
     sleep 1
     screen -S "${session}" -p 0 -X stuff "./executor\n"
-    echo "Нода была перезагружена."
+    echo "Ноду було перезавантажено."
   else
     echo "Сессия ${session} не найдена."
   fi
 }
 
 delete_node() {
-  echo 'Начинаю удаление ноды...'
+  echo 'Починаю видалення ноди...'
 
   if [ -d "$HOME/executor" ]; then
     sudo rm -rf $HOME/executor
-    echo "Папка executor была удалена."
+    echo "Папку executor було видалено."
   else
     echo "Папка executor не найдена."
   fi
 
   if screen -list | grep -q "\.t3rnnode"; then
     sudo screen -X -S t3rnnode quit
-    echo "Сессия t3rnnode была закрыта."
+    echo "Сесію t3rnnode було закрито."
   else
-    echo "Сессия t3rnnode не найдена."
+    echo "Сесія t3rnnode не знайдена."
   fi
 
   sudo screen -X -S t3rnnode_auto quit
 
-  echo "Нода была удалена."
+  echo "Ноду було видалено."
 }
 
 exit_from_script() {
@@ -226,16 +235,16 @@ exit_from_script() {
 while true; do
     sleep 2
     echo -e "\n\nМеню:"
-    echo "1. Установить ноду"
-    echo "2. Проверить логи ноды"
-    echo "3. Изменить комиссию"
-    echo "4. Остановить ноду"
-    echo "5. Перезапустить ноду"
-    echo "6. Автоперезагрузка ноды"
-    echo "7. Обновить ноду"
-    echo "8. Удалить ноду"
-    echo -e "9. Выйти из скрипта\n"
-    read -p "Выберите пункт меню: " choice
+    echo "1. Встановити ноду"
+    echo "2. Перевірити логи ноди"
+    echo "3. Змінити комісію"
+    echo "4. Зупинити ноду"
+    echo "5. Перезапустити ноду"
+    echo "6. Автоперезавантаження ноди"
+    echo "7. Оновити ноду"
+    echo "8. Видалити ноду"
+    echo -e "9. Вийти зі скрипту\n"
+    read -p "Оберіть пункт меню: " choice
 
     case $choice in
       1)
@@ -266,7 +275,7 @@ while true; do
         exit_from_script
         ;;
       *)
-        echo "Неверный пункт. Пожалуйста, выберите правильную цифру в меню."
+        echo "Невірний пункт. Будь ласка, оберіть правильну цифру в меню."
         ;;
     esac
   done
