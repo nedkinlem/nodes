@@ -1,7 +1,7 @@
 
 
 download_node() {
-  echo 'Начинаю установку ноды.'
+  echo 'Починаю встановлення ноди.'
 
   cd $HOME
 
@@ -17,7 +17,7 @@ download_node() {
 
   for port in "${ports[@]}"; do
     if [[ $(lsof -i :"$port" | wc -l) -gt 0 ]]; then
-      echo "Ошибка: Порт $port занят. Программа не сможет выполниться."
+      echo "Помилка: Порт $port занят. Програма не зможе виконатися."
       exit 1
     fi
   done
@@ -30,7 +30,7 @@ download_node() {
       if [[ "$RAM" =~ ^[0-9]+$ ]] && [ "$RAM" -ge 4 ]; then
           break
       else
-          echo "RAM значение должно быть числом и больше или равно 4."
+          echo "Значення RAM повинно бути числом і не менше 4."
       fi
   done
   
@@ -39,7 +39,7 @@ download_node() {
       if [[ "$DISK_SPACE" =~ ^[0-9]+$ ]] && [ "$DISK_SPACE" -ge 100 ]; then
           break
       else
-          echo "Объем диска должен быть числом и минимум 100гб."
+          echo "Обсяг диска повинен бути числом і не менше 100ГБ."
       fi
   done
   
@@ -48,7 +48,7 @@ download_node() {
       if [ -n "$SOLADDRESS" ]; then
           break
       else
-          echo "Адрес соланы не может быть пустым."
+          echo "Адреса Solana не може бути порожньою."
       fi
   done
 
@@ -94,11 +94,11 @@ EOF
 
   sleep 5
 
-  echo 'Нода была установлена.'
+  echo 'Нода була встановлена.'
 }
 
 check_logs() {
-  echo "Показываю последние 40 строк логов Pipe."
+  echo "Показую останні 40 рядків логів Pipe."
 
   journalctl -u pipe -n 40 --output=short | awk '{print $1, $2, $3, substr($0, index($0,$5))}'
 }
@@ -108,7 +108,7 @@ check_node_status() {
   local max_attempts=10
   local output
 
-  echo "Проверка статуса и репутации ноды."
+  echo "Перевірка статусу та репутації ноди."
   
   cd $HOME
   
@@ -123,21 +123,21 @@ check_node_status() {
     fi
     
     attempts=$((attempts + 1))
-    echo "Попытка $attempts: Обнаружен 'Parsed node_info.json' в последних двух строках, повторяем..."
+    echo "Спроба $attempts: Виявлено 'Parsed node_info.json' в останніх двох рядках, повторюємо..."
     sleep 1
   done
   
   if [ $attempts -eq $max_attempts ]; then
-    echo "Достигнуто максимальное количество попыток ($max_attempts)"
+    echo "Досягнуто максимальної кількості спроб ($max_attempts)"
   fi
 }
 
 display_node_info() {
-  echo "Отображение содержимого node_info.json."
+  echo "Відображення вмісту node_info.json."
   if [ -f $HOME/node_info.json ]; then
     cat $HOME/node_info.json
   else
-    echo "Файл node_info.json не найден."
+    echo "Файл node_info.json не знайдено."
   fi
 }
 
@@ -148,25 +148,25 @@ restart_node() {
   sudo systemctl enable pipe
   sudo systemctl restart pipe
 
-  echo "Pipe успешно перезапущена."
+  echo "Pipe успішно перезапущена."
 }
 
 stop_node() {
-  echo "Остановка Pipe Node."
+  echo "Зупинка Pipe Node."
 
   sudo systemctl stop pipe
 
-  echo "Pipe успешно остановлена."
+  echo "Pipe успішно зупинена."
 }
 
 delete_node() {
-  echo 'Начинаю удаление ноды.'
+  echo 'Починаю видалення ноди.'
 
   sudo rm -rf download_cache
   sudo rm node_info.json
   sudo rm pop
 
-  echo 'Нода была удалена.'
+  echo 'Нода була видалена.'
 }
 
 exit_from_script() {
@@ -174,17 +174,18 @@ exit_from_script() {
 }
 
 while true; do
+    channel_logo
     sleep 2
     echo -e "\n\nМеню:"
-    echo "1. Установить ноду"
-    echo "2. Просмотреть логи"
-    echo "3. Проверить статус ноды"
-    echo "4. Показать информацию о ноде"
-    echo "5. Перезапустить ноду"
-    echo "6. Остановить ноду"
-    echo "7. Удалить ноду"
-    echo "8. Выйти из скрипта"
-    read -p "Выберите пункт меню: " choice
+    echo "1. Встановити ноду"
+    echo "2. Переглянути логи"
+    echo "3. Перевірити статус ноди"
+    echo "4. Показати інформацію про ноду"
+    echo "5. Перезапустити ноду"
+    echo "6. Зупинити ноду"
+    echo "7. Видалити ноду"
+    echo "8. Вийти зі скрипта"
+    read -p "Оберіть пункт меню: " choice
 
     case $choice in
       1)
@@ -212,7 +213,7 @@ while true; do
         exit_from_script
         ;;
       *)
-        echo "Неверный пункт. Пожалуйста, выберите правильную цифру в меню."
+        echo "Неправильний пункт. Будь ласка, виберіть правильний номер у меню."
         ;;
     esac
   done
