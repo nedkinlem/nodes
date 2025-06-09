@@ -1,5 +1,8 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+echo "📂 Скрипт запущено з папки: $SCRIPT_DIR"
+
 # ========== Встановлення ноди ==========
 install_node() {
   echo 'Починаю встановлення ноди...'
@@ -55,7 +58,7 @@ install_node() {
   mkdir -p download_cache
   sudo ufw allow 8003/tcp
 
-  sudo ./pop  --ram ${RAM}   --max-disk ${DISK_SPACE}  --cache-dir $HOME/download_cache --pubKey ${SOLADDRESS} --signup-by-referral-route 57322f465023c2c0
+  sudo ./pop  --ram ${RAM}   --max-disk ${DISK_SPACE}  --cache-dir $HOME/download_cache --pubKey ${SOLADDRESS}
 
   sudo tee /etc/systemd/system/pipe.service > /dev/null << EOF
 [Unit]
@@ -91,7 +94,6 @@ EOF
   echo "✅ Нода встановлена та запущена."
 }
 
-# ========== Меню ==========
 check_logs() {
   echo "Показую останні 40 рядків логів Pipe..."
   journalctl -u pipe -n 40 --output=short | awk '{print $1, $2, $3, substr($0, index($0,$5))}'
@@ -134,34 +136,40 @@ delete_node() {
   echo "Нода була видалена."
 }
 
+show_node_logs() {
+  echo "Показую повні логи ноди (journalctl)..."
+  journalctl -u pipe -f
+}
+
 exit_script() {
   echo "Вихід..."
   exit 0
 }
 
-# Запускаємо встановлення
-install_node
-
-# Запускаємо меню
+# ========== Меню ==========
 while true; do
   echo -e "\nМеню:"
-  echo "1. 📄 Переглянути логи"
-  echo "2. 📊 Перевірити статус ноди"
-  echo "3. ℹ️ Показати інформацію про ноду"
-  echo "4. 🔁 Перезапустити ноду"
-  echo "5. ⛔ Зупинити ноду"
-  echo "6. 🗑️ Видалити ноду"
-  echo "7. 🚪 Вийти зі скрипта"
+  echo "1. 🛠 Встановити або перевстановити ноду"
+  echo "2. 📄 Переглянути логи"
+  echo "3. 📊 Перевірити статус ноди"
+  echo "4. ℹ️ Показати інформацію про ноду"
+  echo "5. 🔁 Перезапустити ноду"
+  echo "6. ⛔ Зупинити ноду"
+  echo "7. 🗑️ Видалити ноду"
+  echo "8. 📘 Переглянути логи ноди"
+  echo "9. 🚪 Вийти зі скрипта"
   read -p "Оберіть пункт меню: " choice
 
   case $choice in
-    1) check_logs ;;
-    2) check_node_status ;;
-    3) display_node_info ;;
-    4) restart_node ;;
-    5) stop_node ;;
-    6) delete_node ;;
-    7) exit_script ;;
+    1) install_node ;;
+    2) check_logs ;;
+    3) check_node_status ;;
+    4) display_node_info ;;
+    5) restart_node ;;
+    6) stop_node ;;
+    7) delete_node ;;
+    8) show_node_logs ;;
+    9) exit_script ;;
     *) echo "Неправильний пункт. Спробуйте ще раз." ;;
   esac
 done
