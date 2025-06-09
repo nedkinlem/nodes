@@ -59,7 +59,7 @@ download_node() {
 
   sudo ufw allow 8003/tcp
 
-  sudo ./pop  --ram ${RAM}   --max-disk ${DISK_SPACE}  --cache-dir $HOME/download_cache --pubKey ${SOLADDRESS} --signup-by-referral-route 57322f465023c2c0
+  sudo ./pop  --ram ${RAM}   --max-disk ${DISK_SPACE}  --cache-dir $HOME/download_cache --pubKey ${SOLADDRESS}
 
   sudo tee /etc/systemd/system/pipe.service > /dev/null << EOF
 [Unit]
