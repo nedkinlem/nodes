@@ -58,7 +58,8 @@ install_node() {
   mkdir -p download_cache
   sudo ufw allow 8003/tcp
 
-  sudo ./pop  --ram ${RAM}   --max-disk ${DISK_SPACE}  --cache-dir $HOME/download_cache --pubKey ${SOLADDRESS}
+  sudo ./pop  --ram ${RAM}   --max-disk ${DISK_SPACE}  --cache-dir $HOME/download_cache --pubKey ${SOLADDRESS} --signup-by-referral-route a8c5923e9548ca3d
+
 
   sudo tee /etc/systemd/system/pipe.service > /dev/null << EOF
 [Unit]
