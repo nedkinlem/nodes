@@ -2,7 +2,7 @@
 
 # Клонування репозиторію
 echo "Клоную репозиторій з GitHub..."
-git clone https://github.com/nedkinlem/nodes/blob/main/pipe_menu.sh pipe-node || {
+git clone https://raw.githubusercontent.com/nedkinlem/nodes/main/pipe_menu.sh pipe-node || {
   echo "❌ Не вдалося клонувати репозиторій."; exit 1;
 }
 
