@@ -1,8 +1,8 @@
 #!/bin/bash
 
-NODE_ID="9212846"
 CONTAINER_NAME="nexus-node"
 IMAGE_NAME="nexusxyz/nexus-cli:latest"
+NODE_ID=""
 
 function install_docker() {
   if ! command -v docker &> /dev/null; then
@@ -15,29 +15,33 @@ function install_docker() {
   fi
 }
 
+function prompt_node_id() {
+  read -p "Введіть свій Node ID: " NODE_ID
+  if [[ -z "$NODE_ID" ]]; then
+    echo "❌ Node ID не може бути порожнім."
+    exit 1
+  fi
+}
+
 function run_node() {
   echo "[🚀] Запускаємо ноду Nexus з Node ID: $NODE_ID"
   docker run -d \
     --restart unless-stopped \
     --name $CONTAINER_NAME \
     $IMAGE_NAME start --node-id $NODE_ID
-  echo "[✔] Ноду запущено у фоні. Для логів обери відповідний пункт."
+  echo "[✔] Нода запущена у фоні!"
 }
 
 function view_logs() {
-  echo "[📄] Вивід логів (натисни CTRL+C для виходу):"
+  echo "[📄] Логи ноди (натисни CTRL+C для виходу):"
   docker logs -f $CONTAINER_NAME
 }
 
 function remove_node() {
-  echo "[⚠] Зупинка та видалення контейнера..."
-  docker stop $CONTAINER_NAME
-  docker rm $CONTAINER_NAME
-  echo "[✔] Контейнер видалено"
-
-  echo "[⚠] Видалення образу Docker (необов’язково)..."
+  echo "[⚠] Видалення ноди..."
+  docker stop $CONTAINER_NAME && docker rm $CONTAINER_NAME
   docker rmi $IMAGE_NAME
-  echo "[✔] Образ видалено"
+  echo "[✔] Ноду повністю видалено"
 }
 
 function main_menu() {
@@ -46,21 +50,23 @@ function main_menu() {
     echo "==== Nexus Node Manager (Testnet III) ===="
     echo "Node ID: $NODE_ID"
     echo "------------------------------------------"
-    echo "1) 🟢 Встановити та запустити ноду"
-    echo "2) 📄 Переглянути логи"
-    echo "3) 🔴 Зупинити та видалити ноду"
-    echo "4) ❌ Вийти"
+    echo "1) 📄 Переглянути логи"
+    echo "2) 🔴 Видалити ноду"
+    echo "3) ❌ Вийти"
     echo "------------------------------------------"
-    read -p "Введіть номер опції: " choice
+    read -p "Оберіть опцію: " choice
     case $choice in
-      1) install_docker && run_node ;;
-      2) view_logs ;;
-      3) remove_node ;;
-      4) exit 0 ;;
-      *) echo "Невірний вибір. Спробуй ще раз."; sleep 1 ;;
+      1) view_logs ;;
+      2) remove_node ;;
+      3) exit 0 ;;
+      *) echo "Невірна опція. Спробуйте ще раз."; sleep 1 ;;
     esac
     read -p "Натисніть Enter для повернення до меню..."
   done
 }
 
+# === Сценарій виконання ===
+install_docker
+prompt_node_id
+run_node
 main_menu
