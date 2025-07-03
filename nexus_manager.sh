@@ -1,131 +1,104 @@
 #!/bin/bash
 
-check_and_install_docker() {
-  if ! command -v docker &> /dev/null; then
-    echo "❌ Docker не встановлено. Встановлюємо..."
-    curl -fsSL https://get.docker.com | bash
-    sudo usermod -aG docker $USER
-    newgrp docker
-  fi
-}
-
-pause() {
-  echo -e "\nНатисніть Enter для повернення до меню..."
-  read
-}
-
-install_node() {
-  clear
-  echo "[🟢] Початок встановлення ноди..."
-  check_and_install_docker
-
-  echo "[🧹] Перевірка та видалення попередніх сесій..."
-  docker rm -f nexus >/dev/null 2>&1
-  docker rmi nexusxyz/nexus-cli:latest >/dev/null 2>&1
-
-  echo "[🔧] Оновлення системи..."
-  sudo apt update && sudo apt upgrade -y
-
-  echo "[⬇️] Завантаження допоміжного скрипта..."
-  wget -q -O docker_main.sh https://raw.githubusercontent.com/nedkinlem/nodes/main/Docker.sh && chmod +x docker_main.sh && ./docker_main.sh
-
-  echo "[⬇️] Встановлення screen..."
-  sudo apt install -y screen
-
-  echo "[📦] Завантаження Nexus образу..."
-  docker pull nexusxyz/nexus-cli:latest
-
-  echo -n "[🆔] Введіть ваш Node ID: "
-  read NODE_ID
-
-  echo "[🚀] Запуск ноди..."
-  docker run -d --restart unless-stopped --name nexus nexusxyz/nexus-cli:latest start --node-id "$NODE_ID"
-
-  echo "[✅] Нода встановлена та запущена у фоні."
-  pause
-}
-
-update_node() {
-  clear
-  echo "[🔄] Оновлення ноди..."
-  check_and_install_docker
-
-  echo "[⬇️] Завантаження останнього образу..."
-  docker pull nexusxyz/nexus-cli:latest
-
-  echo "[🧹] Видалення старого контейнера..."
-  docker rm -f nexus >/dev/null 2>&1
-
-  echo -n "[🆔] Введіть ваш Node ID для повторного запуску: "
-  read NODE_ID
-
-  echo "[🚀] Запуск оновленої ноди..."
-  docker run -d --restart unless-stopped --name nexus nexusxyz/nexus-cli:latest start --node-id "$NODE_ID"
-
-  echo "[✅] Ноду оновлено та перезапущено."
-  pause
-}
-
-view_logs() {
-  clear
-  echo "[📄] Відкриття логів..."
-
-  if docker ps | grep -q nexus; then
-    docker logs -f nexus
-  else
-    echo "❌ Ноду не знайдено або вона не запущена."
-    pause
-  fi
-}
-
-delete_node() {
-  clear
-  echo "[🗑️] Видалення ноди..."
-
-  docker rm -f nexus >/dev/null 2>&1
-  docker rmi nexusxyz/nexus-cli:latest >/dev/null 2>&1
-
-  echo "[✅] Нода та образ успішно видалені."
-  pause
-}
-
-start_node() {
-  clear
-  echo "[▶️] Запуск ноди..."
-
-  if docker ps -a | grep -q nexus; then
-    docker start nexus
-    echo "[✅] Ноду запущено."
-  else
-    echo "❌ Контейнер 'nexus' не знайдено. Спочатку встановіть ноду."
-  fi
-  pause
-}
-
-main_menu() {
-  while true; do
+show_menu() {
     clear
     echo "==== Nexus Node Manager ===="
     echo "1) 🟢 Встановити ноду"
     echo "2) 🔄 Оновити ноду"
     echo "3) 📄 Переглянути логи"
     echo "4) 🗑️ Видалити ноду"
-    echo "5) ▶️ Запустити ноду"
+    echo "5) ▶ Запустити ноду"
     echo "6) ❌ Вийти"
     echo "----------------------------"
-    echo -n "Оберіть опцію: "
-    read choice
-
-    case $choice in
-      1) install_node ;;
-      2) update_node ;;
-      3) view_logs ;;
-      4) delete_node ;;
-      5) start_node ;;
-      6) exit 0 ;;
-      *) echo "Невірний вибір. Спробуйте ще раз."; sleep 2 ;;
+    read -p $'\nОберіть опцію: ' option
+    case $option in
+        1) install_node ;;
+        2) update_node ;;
+        3) view_logs ;;
+        4) remove_node ;;
+        5) start_node ;;
+        6) exit 0 ;;
+        *) read -p $'\n❌ Невірна опція. Натисніть Enter для продовження...' ; show_menu ;;
     esac
-  done
 }
 
-main_menu
+install_node() {
+    echo -e "\n🔍 Перевірка наявних сесій та контейнерів..."
+    screen -S nexus -X quit 2>/dev/null
+    docker rm -f nexus 2>/dev/null
+    docker rmi -f nexusxyz/nexus-cli:latest 2>/dev/null
+
+    echo -e "\n⬆️ Оновлення системи..."
+    sudo apt update && sudo apt upgrade -y
+
+    echo -e "\n⬇️ Завантаження Docker скрипта..."
+    wget -q -O docker_main.sh https://raw.githubusercontent.com/nedkinlem/nodes/main/Docker.sh && chmod +x docker_main.sh && ./docker_main.sh
+
+    echo -e "\n📦 Встановлення screen..."
+    sudo apt install -y screen
+
+    echo -e "\n🐳 Завантаження Nexus образу..."
+    docker pull nexusxyz/nexus-cli:latest
+
+    read -p $'\n🔑 Введіть ваш node ID: ' NODE_ID
+
+    echo -e "\n🚀 Запуск ноди..."
+    screen -dmS nexus bash -c "docker run -it --init --name nexus nexusxyz/nexus-cli:latest start --node-id $NODE_ID"
+    sleep 15
+    echo -e "\n✅ Ноду запущено у screen-сесії 'nexus'."
+    read -p "Натисніть Enter для повернення до меню..."
+    show_menu
+}
+
+update_node() {
+    echo -e "\n🐳 Оновлення образу Nexus..."
+    docker pull nexusxyz/nexus-cli:latest
+
+    echo -e "\n🧹 Зупинка та видалення старого контейнера..."
+    docker stop nexus 2>/dev/null
+    docker rm nexus 2>/dev/null
+
+    read -p $'\n🔑 Введіть ваш node ID для перезапуску: ' NODE_ID
+
+    echo -e "\n🚀 Запуск ноди з оновленим образом..."
+    screen -dmS nexus bash -c "docker run -it --init --name nexus nexusxyz/nexus-cli:latest start --node-id $NODE_ID"
+    sleep 15
+    echo -e "\n✅ Ноду оновлено та перезапущено."
+    read -p "Натисніть Enter для повернення до меню..."
+    show_menu
+}
+
+view_logs() {
+    echo -e "\n📄 Відображення останніх 20 рядків логів..."
+    if docker ps | grep -q "nexus"; then
+        docker logs --tail 20 -f nexus
+    else
+        echo -e "\n❌ Ноду не знайдено або вона не запущена."
+        read -p "Натисніть Enter для повернення до меню..."
+    fi
+    show_menu
+}
+
+remove_node() {
+    echo -e "\n🗑️ Видалення ноди..."
+    screen -S nexus -X quit 2>/dev/null
+    docker stop nexus 2>/dev/null
+    docker rm nexus 2>/dev/null
+    docker rmi nexusxyz/nexus-cli:latest 2>/dev/null
+    echo -e "\n✅ Ноду повністю видалено."
+    read -p "Натисніть Enter для повернення до меню..."
+    show_menu
+}
+
+start_node() {
+    read -p $'\n🔑 Введіть ваш node ID: ' NODE_ID
+    echo -e "\n🚀 Запуск ноди..."
+    screen -dmS nexus bash -c "docker run -it --init --name nexus nexusxyz/nexus-cli:latest start --node-id $NODE_ID"
+    sleep 15
+    echo -e "\n✅ Ноду запущено у screen-сесії 'nexus'."
+    read -p "Натисніть Enter для повернення до меню..."
+    show_menu
+}
+
+# Запуск меню
+show_menu
