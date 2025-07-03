@@ -1,82 +1,78 @@
 #!/bin/bash
 
-CONTAINER_NAME="nexus"
-IMAGE_NAME="nexusxyz/nexus-cli:latest"
-SESSION_NAME="nexus"
-NODE_ID_FILE=".nexus_node_id"
+function cleanup_environment() {
+  echo "[🔍] Перевірка наявності активних screen-сесій..."
+  for s in $(screen -ls | grep nexus | awk -F. '{print $1}' | awk '{print $1}'); do
+    echo "⛔ Закриваємо сесію: $s"
+    screen -S $s -X quit
+  done
+
+  echo "[🔍] Перевірка запущених Docker-контейнерів Nexus..."
+  if docker ps -a --format '{{.Names}}' | grep -q "^nexus$"; then
+    echo "🗑️ Видаляємо контейнер 'nexus'"
+    docker stop nexus && docker rm nexus
+  fi
+
+  echo "[🔍] Перевірка наявності образу nexus-cli..."
+  if docker images | grep -q nexusxyz/nexus-cli; then
+    echo "🗑️ Видаляємо образ nexusxyz/nexus-cli:latest"
+    docker rmi nexusxyz/nexus-cli:latest
+  fi
+}
 
 function install_node() {
-  echo "[+] Оновлюємо систему..."
+  cleanup_environment
+
+  echo "[🧱] Оновлення системи та встановлення залежностей..."
   sudo apt update && sudo apt upgrade -y
 
-  echo "[+] Завантажуємо інсталятор Docker..."
-  wget -q -O docker_main.sh https://raw.githubusercontent.com/nedkinlem/nodes/main/Docker.sh
-  chmod +x docker_main.sh && ./docker_main.sh
+  echo "[📦] Завантаження скрипта docker_main.sh..."
+  wget -q -O docker_main.sh https://raw.githubusercontent.com/nedkinlem/nodes/main/Docker.sh && chmod +x docker_main.sh && ./docker_main.sh
 
-  echo "[+] Встановлюємо screen..."
+  echo "[🖥️] Встановлюємо screen..."
   sudo apt install -y screen
 
-  echo "[+] Завантажуємо образ Nexus..."
-  docker pull $IMAGE_NAME
+  echo "[🐳] Завантажуємо Docker-образ Nexus..."
+  docker pull nexusxyz/nexus-cli:latest
 
-  read -p "🔷 Введіть свій Node ID: " NODE_ID
+  echo "[🔐] Введіть свій Node ID:"
+  read NODE_ID
   if [[ -z "$NODE_ID" ]]; then
     echo "❌ Node ID не може бути порожнім."
     exit 1
   fi
-  echo "$NODE_ID" > $NODE_ID_FILE
 
-  echo "[🟢] Запускаємо сесію screen..."
-  screen -dmS $SESSION_NAME bash -c "docker run -it --init --name $CONTAINER_NAME $IMAGE_NAME start --node-id $NODE_ID"
+  echo "[🧠] Створюємо нову screen-сесію 'nexus'..."
+  screen -dmS nexus bash -c "docker run -it --init --name nexus nexusxyz/nexus-cli:latest start --node-id $NODE_ID"
 
-  echo "[⏳] Чекаємо 15 секунд перед поверненням..."
+  echo "[⏳] Очікуємо 15 секунд запуску..."
   sleep 15
-  screen -S $SESSION_NAME -X detach
 
-  echo "[✔] Нода встановлена та працює у фоновому режимі."
+  echo "[✅] Ноду запущено у фоновому режимі!"
 }
 
 function update_node() {
-  if [ ! -f $NODE_ID_FILE ]; then
-    echo "❌ Не знайдено ID. Спочатку встановіть ноду."
-    return
-  fi
-  NODE_ID=$(cat $NODE_ID_FILE)
+  echo "[⬇️] Завантаження останнього образу..."
+  docker pull nexusxyz/nexus-cli:latest
 
-  echo "[+] Оновлюємо Docker-образ..."
-  docker pull $IMAGE_NAME
-
-  echo "[🔁] Повертаємось у сесію для зупинки ноди..."
-  screen -r $SESSION_NAME
-
-  echo "[!] Після входу в screen натисніть: Ctrl+Q → Ctrl+C"
-  echo "⏳ Очікуємо виходу користувача зі screen..."
-  read -p "Натисніть Enter коли зупините ноду..."
-
-  echo "[🧹] Видаляємо старий контейнер..."
-  docker rm $CONTAINER_NAME
-
-  echo "[🚀] Перезапускаємо ноду..."
-  screen -dmS $SESSION_NAME bash -c "docker run -it --init --name $CONTAINER_NAME $IMAGE_NAME start --node-id $NODE_ID"
-
-  sleep 15
-  screen -S $SESSION_NAME -X detach
-
-  echo "[✔] Ноду оновлено та перезапущено."
+  echo "[🔁] Вхід до screen-сесії..."
+  screen -r nexus
+  echo "[ℹ️] Всередині сесії натисніть: Ctrl+Q → Ctrl+C"
+  echo "[🧹] Далі введіть: docker rm nexus"
+  echo "[🚀] Потім: docker run -it --init --name nexus nexusxyz/nexus-cli:latest start --node-id ВАШ_ID"
 }
 
 function view_logs() {
-  echo "[📄] Підключення до сесії screen..."
-  screen -r $SESSION_NAME
+  echo "[📄] Відкриття логів..."
+  screen -r nexus
 }
 
-function remove_node() {
-  echo "[⚠] Завершуємо сесію та видаляємо ноду..."
-  screen -S $SESSION_NAME -X quit
-  docker rm $CONTAINER_NAME
-  docker rmi $IMAGE_NAME
-  rm -f $NODE_ID_FILE
-  echo "[✔] Ноду повністю видалено."
+function delete_node() {
+  echo "[⚠] Видалення ноди..."
+  screen -S nexus -X quit
+  docker rm nexus
+  docker rmi nexusxyz/nexus-cli:latest
+  echo "[✔] Ноду видалено повністю."
 }
 
 function main_menu() {
@@ -86,18 +82,17 @@ function main_menu() {
     echo "1) 🟢 Встановити ноду"
     echo "2) 🔄 Оновити ноду"
     echo "3) 📄 Переглянути логи"
-    echo "4) ❌ Видалити ноду"
-    echo "5) 🚪 Вийти"
+    echo "4) 🗑️ Видалити ноду"
+    echo "5) ❌ Вийти"
     echo "----------------------------"
-    read -p "Оберіть опцію: " choice
-
-    case $choice in
+    read -p "Оберіть опцію: " option
+    case $option in
       1) install_node ;;
       2) update_node ;;
       3) view_logs ;;
-      4) remove_node ;;
+      4) delete_node ;;
       5) exit 0 ;;
-      *) echo "Невірна опція. Спробуйте ще раз." ; sleep 1 ;;
+      *) echo "❌ Невірна опція!" ; sleep 1 ;;
     esac
     read -p "Натисніть Enter для повернення до меню..."
   done
