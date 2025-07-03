@@ -2,92 +2,94 @@
 
 CONTAINER_NAME="nexus"
 IMAGE_NAME="nexusxyz/nexus-cli:latest"
-SCREEN_NAME="nexus"
-NODE_ID=""
+SESSION_NAME="nexus"
+NODE_ID_FILE="$HOME/.nexus_node_id"
 
-function check_and_cleanup() {
-  echo "[🔍] Перевірка наявних контейнерів та screen-сесій..."
+function clear_previous_nexus() {
+  echo "[🔍] Перевірка попередніх сесій та контейнерів..."
+  screen -S $SESSION_NAME -X quit &> /dev/null
+  docker stop $CONTAINER_NAME &> /dev/null
+  docker rm $CONTAINER_NAME &> /dev/null
+  docker rmi $IMAGE_NAME -f &> /dev/null
+}
 
-  # Зупинити та видалити контейнер, якщо існує
-  if docker ps -a --format '{{.Names}}' | grep -q "^$CONTAINER_NAME$"; then
-    echo "[🧹] Видаляємо існуючий контейнер $CONTAINER_NAME..."
-    docker stop $CONTAINER_NAME >/dev/null 2>&1
-    docker rm $CONTAINER_NAME >/dev/null 2>&1
+function save_node_id() {
+  read -p "🔑 Введіть ваш Node ID: " NODE_ID
+  echo "$NODE_ID" > "$NODE_ID_FILE"
+}
+
+function load_node_id() {
+  if [[ -f "$NODE_ID_FILE" ]]; then
+    NODE_ID=$(cat "$NODE_ID_FILE")
+  else
+    echo "⚠️ Node ID не знайдено. Будь ласка, встановіть ноду спочатку."
+    read -p "Натисніть Enter для повернення в меню..." && return 1
   fi
-
-  # Видалити screen-сесію, якщо існує
-  if screen -ls | grep -q "\.${SCREEN_NAME}"; then
-    echo "[🧹] Закриваємо screen-сесію $SCREEN_NAME..."
-    screen -S $SCREEN_NAME -X quit
-  fi
-
-  echo "[✔] Очистка завершена."
 }
 
 function install_node() {
-  check_and_cleanup
+  clear_previous_nexus
+  echo "[✔] Починаємо встановлення..."
 
-  echo "[🔧] Оновлюємо систему..."
   sudo apt update && sudo apt upgrade -y
-
-  echo "[⬇] Завантажуємо скрипт docker_main.sh..."
   wget -q -O docker_main.sh https://raw.githubusercontent.com/nedkinlem/nodes/main/Docker.sh && chmod +x docker_main.sh && ./docker_main.sh
-
-  echo "[📦] Встановлюємо screen..."
   sudo apt install -y screen
 
-  echo "[⬇] Завантажуємо Nexus CLI Docker образ..."
   docker pull $IMAGE_NAME
 
-  echo
-  read -p "🔑 Введіть свій Node ID: " NODE_ID
-  if [[ -z "$NODE_ID" ]]; then
-    echo "❌ Node ID не може бути порожнім."; return
-  fi
+  save_node_id
+  echo "[🚀] Запускаємо ноду..."
 
-  echo "[🖥] Створюємо screen-сесію '$SCREEN_NAME'..."
-  screen -dmS $SCREEN_NAME bash -c "docker run -it --init --name $CONTAINER_NAME $IMAGE_NAME start --node-id $NODE_ID"
+  screen -dmS $SESSION_NAME bash -c "docker run -it --init --name $CONTAINER_NAME $IMAGE_NAME start --node-id $NODE_ID"
 
-  echo "[⏳] Чекаємо 15 секунд, поки контейнер запуститься..."
   sleep 15
-
-  echo "[✔] Нода встановлена у screen-сесії '$SCREEN_NAME'."
+  echo "[✔] Ноду запущено у сесії screen '$SESSION_NAME'"
+  read -p "Натисніть Enter для повернення до меню..."
 }
 
 function update_node() {
-  echo "[⬇] Оновлюємо Docker-образ Nexus..."
+  load_node_id || return
+  echo "[🔁] Оновлюємо образ..."
   docker pull $IMAGE_NAME
+  echo "[💥] Зупинка та видалення старого контейнера..."
+  docker stop $CONTAINER_NAME &> /dev/null
+  docker rm $CONTAINER_NAME &> /dev/null
 
-  if screen -ls | grep -q "\.${SCREEN_NAME}"; then
-    echo "[🔁] Повертаємося до сесії $SCREEN_NAME для перезапуску..."
-    screen -r $SCREEN_NAME
-    echo
-    echo "Після завершення натисніть CTRL+Q, потім CTRL+C щоб зупинити, далі перезапустіть:"
-    echo "docker rm $CONTAINER_NAME"
-    echo "docker run -it --init --name $CONTAINER_NAME $IMAGE_NAME start --node-id $NODE_ID"
-  else
-    echo "❌ Сесія 'nexus' не знайдена. Оновлення неможливе."
-  fi
+  echo "[🚀] Запуск нової версії..."
+  screen -dmS $SESSION_NAME bash -c "docker run -it --init --name $CONTAINER_NAME $IMAGE_NAME start --node-id $NODE_ID"
+
+  echo "[✔] Нода оновлена!"
+  read -p "Натисніть Enter для повернення до меню..."
 }
 
 function view_logs() {
-  echo "[📄] Відкриття логів..."
-  if screen -ls | grep -q "\.${SCREEN_NAME}"; then
-    screen -r $SCREEN_NAME
+  if screen -ls | grep -q "$SESSION_NAME"; then
+    echo "[📄] Відкриття логів..."
+    sleep 1
+    screen -r $SESSION_NAME
   else
-    echo "❌ Сесія '$SCREEN_NAME' не знайдена. Нода наразі не запущена."
+    echo "❌ Сесія '$SESSION_NAME' не знайдена. Нода наразі не запущена."
+    read -p "Натисніть Enter для повернення до меню..."
   fi
 }
 
-function remove_node() {
-  echo "[🗑] Видалення ноди..."
-  if screen -ls | grep -q "\.${SCREEN_NAME}"; then
-    screen -S $SCREEN_NAME -X quit
-  fi
-  docker stop $CONTAINER_NAME >/dev/null 2>&1
-  docker rm $CONTAINER_NAME >/dev/null 2>&1
-  docker rmi $IMAGE_NAME -f >/dev/null 2>&1
-  echo "[✔] Ноду повністю видалено."
+function start_node() {
+  load_node_id || return
+  echo "[▶] Запуск ноди з ID: $NODE_ID"
+  screen -dmS $SESSION_NAME bash -c "docker run -it --init --name $CONTAINER_NAME $IMAGE_NAME start --node-id $NODE_ID"
+  echo "[✔] Ноду запущено у фоновій сесії screen '$SESSION_NAME'"
+  read -p "Натисніть Enter для повернення до меню..."
+}
+
+function delete_node() {
+  echo "[⚠] Видалення ноди..."
+  screen -S $SESSION_NAME -X quit &> /dev/null
+  docker stop $CONTAINER_NAME &> /dev/null
+  docker rm $CONTAINER_NAME &> /dev/null
+  docker rmi $IMAGE_NAME -f &> /dev/null
+  rm -f "$NODE_ID_FILE"
+  echo "[🗑] Ноду видалено!"
+  read -p "Натисніть Enter для повернення до меню..."
 }
 
 function main_menu() {
@@ -98,18 +100,19 @@ function main_menu() {
     echo "2) 🔄 Оновити ноду"
     echo "3) 📄 Переглянути логи"
     echo "4) 🗑️ Видалити ноду"
-    echo "5) ❌ Вийти"
+    echo "5) ▶️ Запустити ноду"
+    echo "6) ❌ Вийти"
     echo "----------------------------"
-    read -p "Оберіть опцію: " choice
-    case $choice in
+    read -p "Оберіть опцію: " option
+    case $option in
       1) install_node ;;
       2) update_node ;;
       3) view_logs ;;
-      4) remove_node ;;
-      5) exit 0 ;;
-      *) echo "Невірна опція. Спробуйте ще раз."; sleep 1 ;;
+      4) delete_node ;;
+      5) start_node ;;
+      6) exit 0 ;;
+      *) echo "Невірна опція!"; sleep 1 ;;
     esac
-    read -p "Натисніть Enter для повернення до меню..."
   done
 }
 
