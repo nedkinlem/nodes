@@ -15,7 +15,7 @@ function install_node() {
   sudo apt update && sudo apt upgrade -y
 
   echo "🐳 Встановлюємо Docker..."
-  wget -q -O docker_main.sh https://raw.githubusercontent.com/nedkinlem/nodes/main/Docker.sh
+  curl -fsSL https://get.docker.com | bash
   chmod +x docker_main.sh && ./docker_main.sh
 
   echo "⬇️ Завантажуємо образ ноди..."
