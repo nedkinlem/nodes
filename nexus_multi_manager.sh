@@ -29,11 +29,9 @@ function install_node {
     echo -e "\n📥 Завантаження Nexus образу..."
     docker pull $NEXUS_IMAGE
 
-    echo -e "\n🖥️ Створення screen-сесії для ноди $NODE_ID..."
-    screen -dmS $CONTAINER_NAME bash -c "docker run -it --init --name $CONTAINER_NAME $NEXUS_IMAGE start --node-id $NODE_ID"
+    echo -e "\n🖥️ Створення контейнера для ноди $NODE_ID..."
+    docker run -dit --restart unless-stopped --name $CONTAINER_NAME $NEXUS_IMAGE start --node-id $NODE_ID
 
-    echo -e "\n⏳ Зачекайте 15 секунд для старту..."
-    sleep 15
     echo -e "\n✅ Нода $NODE_ID встановлена та запущена у фоновому режимі!"
 }
 
@@ -50,7 +48,7 @@ function update_node {
     docker rm -f $CONTAINER_NAME >/dev/null 2>&1
 
     echo -e "\n🚀 Запуск оновленої ноди $NODE_ID..."
-    docker run -it --init --name $CONTAINER_NAME $NEXUS_IMAGE start --node-id $NODE_ID
+    docker run -dit --restart unless-stopped --name $CONTAINER_NAME $NEXUS_IMAGE start --node-id $NODE_ID
 }
 
 function show_logs {
@@ -72,7 +70,6 @@ function delete_node {
     CONTAINER_NAME="nexus_${NODE_ID}"
 
     echo -e "\n🗑️ Видалення ноди $NODE_ID..."
-    screen -S $CONTAINER_NAME -X quit >/dev/null 2>&1
     docker rm -f $CONTAINER_NAME >/dev/null 2>&1
     echo -e "✅ Ноду $NODE_ID видалено!"
     sleep 2
@@ -86,7 +83,7 @@ function start_node {
     if docker ps -a | grep -q "$CONTAINER_NAME"; then
         docker start -ai $CONTAINER_NAME
     else
-        docker run -it --init --name $CONTAINER_NAME $NEXUS_IMAGE start --node-id $NODE_ID
+        docker run -dit --restart unless-stopped --name $CONTAINER_NAME $NEXUS_IMAGE start --node-id $NODE_ID
     fi
 }
 
@@ -104,7 +101,7 @@ function check_version {
 
 while true; do
     clear
-    echo "==== Nexus Node Manager (оновлений, мульти-ноди) ===="
+    echo "==== Nexus Node Manager (мульти-ноди з автоперезапуском) ===="
     echo "1) 🟢 Встановити нову ноду"
     echo "2) 🔄 Оновити ноду"
     echo "3) 📄 Переглянути логи"
