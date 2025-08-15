@@ -1,41 +1,41 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Nexus Multi Node Manager
-# ✅ Підтримка: кілька нод (окремі контейнери), автоперезапуск, логування, діагностика,
-# ✅ SWAP (8G), перевірка версії CLI, та опціональний LOOP‑режим (кастомний образ).
-# Контейнери мають вигляд: nexus_<NODE_ID>
+# Підтримка: мульти-ноди, автоперезапуск, логування, діагностика,
+# SWAP (8G), перевірка версії CLI, LOOP-режим (кастомний образ),
+# DEBUG-LOOP: нескінченний запуск і збереження логів на хості.
 
 set -euo pipefail
 
-NEXUS_IMAGE="nexusxyz/nexus-cli:latest"       # офіційний CLI-образ
-LOOP_BASE_IMAGE="debian:bookworm-slim"        # для loop-режиму (є /bin/sh)
-SWAP_SIZE_GB="${SWAP_SIZE_GB:-8}"             # розмір SWAP
-SLEEP_BETWEEN_RUNS="${SLEEP_BETWEEN_RUNS:-30}"# пауза між перезапусками у loop-режимі
+NEXUS_IMAGE="nexusxyz/nexus-cli:latest"     # офіційний образ Nexus CLI
+LOOP_BASE_IMAGE="debian:bookworm-slim"      # базовий образ для кастомного loop/debug
+SWAP_SIZE_GB="${SWAP_SIZE_GB:-8}"
+SLEEP_BETWEEN_RUNS="${SLEEP_BETWEEN_RUNS:-30}"
+HOST_LOG_ROOT="/var/log/nexus"              # директорія логів на хості
 
-# --------- helpers ----------
 need_docker() {
   if ! command -v docker >/dev/null 2>&1; then
-    echo -e "\n📦 Встановлення Docker..."
+    echo -e "\nВстановлення Docker..."
     sudo apt update -y && sudo apt install -y docker.io -y
   fi
 }
-ok() { echo -e "✅ $*"; }
-warn() { echo -e "⚠️  $*"; }
-err() { echo -e "❌ $*" >&2; }
 
-container_name_for() {
-  echo "nexus_$1"
-}
+ok()   { echo -e "$*"; }
+warn() { echo -e "$*"; }
+err()  { echo -e "$*" >&2; }
 
-# --------- core actions ----------
+container_name_for() { echo "nexus_$1"; }
+
+# -------------------- БАЗОВІ ДІЇ --------------------
+
 install_node() {
-  read -rp "🔑 Введіть ваш node ID: " NODE_ID
+  read -rp "Введіть ваш node ID: " NODE_ID
   local CN; CN=$(container_name_for "$NODE_ID")
-
   need_docker
-  echo -e "\n📥 Завантаження образу Nexus CLI..."
+
+  echo -e "\nЗавантаження образу Nexus CLI..."
   docker pull "$NEXUS_IMAGE"
 
-  echo -e "\n🚀 Запуск ноди у контейнері: $CN"
+  echo -e "\nЗапуск ноди у контейнері: $CN"
   docker rm -f "$CN" >/dev/null 2>&1 || true
   docker run -dit \
     --restart unless-stopped \
@@ -44,18 +44,18 @@ install_node() {
     "$NEXUS_IMAGE" start --node-id "$NODE_ID"
 
   ok "Нода $NODE_ID встановлена і працює у фоні."
-  echo "ℹ️  Від'єднання з foreground: Ctrl+P, потім Ctrl+Q"
+  echo "Від'єднання з attach: Ctrl+P, потім Ctrl+Q"
 }
 
 update_node() {
-  read -rp "🔑 Введіть ваш node ID: " NODE_ID
+  read -rp "Введіть ваш node ID: " NODE_ID
   local CN; CN=$(container_name_for "$NODE_ID")
-
   need_docker
-  echo -e "\n📥 Оновлення образу Nexus CLI..."
+
+  echo -e "\nОновлення образу Nexus CLI..."
   docker pull "$NEXUS_IMAGE"
 
-  echo -e "\n🔄 Перезапуск контейнера $CN на оновленому образі..."
+  echo -e "\nПерезапуск контейнера $CN..."
   docker rm -f "$CN" >/dev/null 2>&1 || true
   docker run -dit \
     --restart unless-stopped \
@@ -67,11 +67,11 @@ update_node() {
 }
 
 start_node() {
-  read -rp "🔑 Введіть ваш node ID: " NODE_ID
+  read -rp "Введіть ваш node ID: " NODE_ID
   local CN; CN=$(container_name_for "$NODE_ID")
-
   need_docker
-  echo -e "\n▶️  Запуск/підключення до контейнера $CN..."
+
+  echo -e "\nЗапуск або підключення до контейнера $CN..."
   if docker ps -a --format '{{.Names}}' | grep -qx "$CN"; then
     docker start "$CN" >/dev/null 2>&1 || true
     docker attach "$CN" || true
@@ -83,11 +83,11 @@ start_node() {
 }
 
 show_logs() {
-  read -rp "🔑 Введіть ваш node ID: " NODE_ID
+  read -rp "Введіть ваш node ID: " NODE_ID
   local CN; CN=$(container_name_for "$NODE_ID")
   need_docker
 
-  echo -e "\n📄 Логи $CN (Ctrl+C для виходу):\n"
+  echo -e "\nЛоги $CN (Ctrl+C для виходу):\n"
   if docker ps -a --format '{{.Names}}' | grep -qx "$CN"; then
     docker logs -f "$CN"
   else
@@ -97,7 +97,7 @@ show_logs() {
 
 list_nodes() {
   need_docker
-  echo -e "\n📋 Список контейнерів Nexus:"
+  echo -е "\nСписок контейнерів Nexus:"
   local out
   out=$(docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Image}}" | grep -E '^nexus_') || true
   if [[ -z "${out}" ]]; then
@@ -109,30 +109,29 @@ list_nodes() {
 }
 
 delete_node() {
-  read -rp "🔑 Введіть ваш node ID: " NODE_ID
+  read -rp "Введіть ваш node ID: " NODE_ID
   local CN; CN=$(container_name_for "$NODE_ID")
   need_docker
 
-  echo -e "\n🗑️  Видалення контейнера $CN..."
+  echo -e "\nВидалення контейнера $CN..."
   docker rm -f "$CN" >/dev/null 2>&1 || true
   ok "Ноду $NODE_ID видалено."
 }
 
 check_version() {
   need_docker
-  echo -e "\n🔎 Версія Nexus CLI (із образу):"
+  echo -e "\nВерсія Nexus CLI (з образу):"
   docker run --rm "$NEXUS_IMAGE" --version || warn "Не вдалося отримати версію."
   read -rp $'\nНатисніть Enter для повернення до меню... ' _
 }
 
 make_swap() {
-  echo -e "\n💾 Перевірка/створення SWAP (${SWAP_SIZE_GB}G)..."
+  echo -e "\nПеревірка або створення SWAP (${SWAP_SIZE_GB}G)..."
   if swapon --show | grep -q '^/swapfile'; then
-    ok "SWAP вже активний:"
+    ok "SWAP уже активний:"
     swapon --show
     return
   fi
-
   sudo fallocate -l "${SWAP_SIZE_GB}G" /swapfile
   sudo chmod 600 /swapfile
   sudo mkswap /swapfile
@@ -144,53 +143,51 @@ make_swap() {
 }
 
 diagnose_node() {
-  read -rp "🔍 Введіть ваш node ID: " NODE_ID
+  read -rp "Введіть ваш node ID: " NODE_ID
   local CN; CN=$(container_name_for "$NODE_ID")
   need_docker
 
-  echo -e "\n🧪 Діагностика $CN:"
-  echo -e "\n📤 Статус:"
+  echo -e "\nДіагностика $CN:"
+  echo -e "\nСтатус:"
   docker ps -a --filter "name=$CN"
 
-  echo -e "\n📜 Останні 80 рядків логів:"
-  docker logs --tail 80 "$CN" 2>/dev/null || warn "Логи недоступні."
+  echo -e "\nОстанні 120 рядків логів:"
+  docker logs --tail 120 "$CN" 2>/dev/null || warn "Логи недоступні."
 
-  echo -e "\n❗ Exit code:"
+  echo -e "\nExit code:"
   docker inspect "$CN" --format='ExitCode: {{.State.ExitCode}}' 2>/dev/null || echo "N/A"
 
-  echo -e "\n❗ Помилка запуску:"
+  echo -e "\nПомилка запуску:"
   docker inspect "$CN" --format='Error: {{.State.Error}}' 2>/dev/null || echo "N/A"
 
-  echo -e "\nℹ️  Від'єднання з attach: Ctrl+P, Ctrl+Q"
   read -rp $'\nНатисніть Enter для повернення до меню... ' _
 }
 
-# --------- loop-mode (кастомний образ) ----------
-# будуємо окремий образ, де є /bin/sh; усередині стоїть nexus-cli через офіційний інсталер
+# -------------------- LOOP (звичайний) --------------------
+
 setup_loop_mode() {
-  read -rp "🔁 Введіть ваш NODE ID для loop‑режиму: " NODE_ID
-  local CN; CN=$(container_name_for "$NODE_ID")
-  local BUILD_DIR="${HOME}/nexus_loop_build_${NODE_ID}"
-  local TAG="nexus-loop-cli-${NODE_ID}"
+  read -rp "Введіть ваш NODE ID для loop-режиму: " NODE_ID
+  local CN TAG BUILD_DIR
+  CN=$(container_name_for "$NODE_ID")
+  TAG="nexus-loop-cli-${NODE_ID}"
+  BUILD_DIR="${HOME}/nexus_loop_build_${NODE_ID}"
 
   need_docker
   mkdir -p "$BUILD_DIR"
 
-  # loop.sh — POSIX sh, щоб не залежати від bash у контейнері
   cat > "${BUILD_DIR}/loop.sh" <<'EOF'
 #!/bin/sh
 set -eu
-echo "🔁 Nexus loop-mode. NODE_ID=${NODE_ID}"
+echo "Nexus loop-mode. NODE_ID=${NODE_ID}"
 while true; do
-  echo "▶️  запуск nexus-cli..."
+  echo "Запуск nexus-cli..."
   /root/.nexus-network/nexus-network start --node-id "${NODE_ID}"
-  echo "🕐 завершено. повторний старт через ${SLEEP_BETWEEN_RUNS}s..."
+  echo "Завершено. Повторний старт через ${SLEEP_BETWEEN_RUNS}s..."
   sleep "${SLEEP_BETWEEN_RUNS}"
 done
 EOF
   chmod 0755 "${BUILD_DIR}/loop.sh"
 
-  # Dockerfile на базі Debian + офіційний інсталер CLI
   cat > "${BUILD_DIR}/Dockerfile" <<EOF
 FROM ${LOOP_BASE_IMAGE}
 ENV DEBIAN_FRONTEND=noninteractive
@@ -202,13 +199,13 @@ COPY loop.sh /loop.sh
 ENTRYPOINT ["/loop.sh"]
 EOF
 
-  echo -e "\n🏗  Збір образу ${TAG}..."
+  echo -e "\nЗбір образу ${TAG}..."
   ( cd "$BUILD_DIR" && docker build -t "$TAG" . )
 
-  echo -e "\n🧹 Видалення попереднього контейнера (як був)..."
+  echo -e "\nВидалення попереднього контейнера (як був)..."
   docker rm -f "$CN" >/dev/null 2>&1 || true
 
-  echo -e "\n🚀 Запуск контейнера ${CN} в loop‑режимі..."
+  echo -e "\нЗапуск ${CN} у loop-режимі..."
   docker run -dit \
     --restart unless-stopped \
     --name "$CN" \
@@ -216,26 +213,102 @@ EOF
     -e SLEEP_BETWEEN_RUNS="${SLEEP_BETWEEN_RUNS}" \
     "$TAG"
 
-  ok "Нода $NODE_ID працює в loop‑режимі. Логи: docker logs -f $CN"
+  ok "Нода $NODE_ID працює в loop-режимі. Логи: docker logs -f $CN"
   read -rp $'\nНатисніть Enter для повернення до меню... ' _
 }
 
-# --------- menu ----------
+# -------------------- DEBUG-LOOP (лог-файли) --------------------
+
+setup_debug_loop_mode() {
+  read -rp "Введіть ваш NODE ID для debug-loop: " NODE_ID
+  local CN TAG BUILD_DIR HOST_LOG_DIR
+  CN=$(container_name_for "$NODE_ID")
+  TAG="nexus-debug-loop-cli-${NODE_ID}"
+  BUILD_DIR="${HOME}/nexus_debug_loop_build_${NODE_ID}"
+  HOST_LOG_DIR="${HOST_LOG_ROOT}/${NODE_ID}"
+
+  need_docker
+  sudo mkdir -p "$HOST_LOG_DIR"
+  sudo chown "$(id -u)":"$(id -g)" "$HOST_LOG_DIR"
+
+  mkdir -p "$BUILD_DIR"
+
+  cat > "${BUILD_DIR}/loop.sh" <<'EOF'
+#!/bin/sh
+set -eu
+LOG_DIR="/logs"
+LOG_FILE="${LOG_DIR}/nexus.log"
+mkdir -p "$LOG_DIR"
+echo "==== $(date -Is) :: DEBUG-LOOP start. NODE_ID=${NODE_ID} ====" >> "$LOG_FILE"
+while true; do
+  echo "==== $(date -Is) :: run nexus-cli ====" >> "$LOG_FILE"
+  /root/.nexus-network/nexus-network start --node-id "${NODE_ID}" >> "$LOG_FILE" 2>&1 || true
+  rc=$?
+  echo "==== $(date -Is) :: exit code: $rc ====" >> "$LOG_FILE"
+  sleep "${SLEEP_BETWEEN_RUNS}"
+done
+EOF
+  chmod 0755 "${BUILD_DIR}/loop.sh"
+
+  cat > "${BUILD_DIR}/Dockerfile" <<EOF
+FROM ${LOOP_BASE_IMAGE}
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN curl --proto '=https' --tlsv1.2 -sSf https://cli.nexus.xyz/ | sh
+WORKDIR /root
+ENV SLEEP_BETWEEN_RUNS=${SLEEP_BETWEEN_RUNS}
+COPY loop.sh /loop.sh
+ENTRYPOINT ["/loop.sh"]
+EOF
+
+  echo -e "\nЗбір образу ${TAG}..."
+  ( cd "$BUILD_DIR" && docker build -t "$TAG" . )
+
+  echo -e "\nВидалення попереднього контейнера (як був)..."
+  docker rm -f "$CN" >/dev/null 2>&1 || true
+
+  echo -e "\nЗапуск ${CN} у DEBUG-LOOP (логи: ${HOST_LOG_DIR}/nexus.log)..."
+  docker run -dit \
+    --restart unless-stopped \
+    --name "$CN" \
+    -e NODE_ID="$NODE_ID" \
+    -e SLEEP_BETWEEN_RUNS="${SLEEP_BETWEEN_RUNS}" \
+    -v "${HOST_LOG_DIR}:/logs" \
+    "$TAG"
+
+  ok "Нода $NODE_ID у debug-loop. Перегляд логів: sudo tail -f ${HOST_LOG_DIR}/nexus.log"
+  read -rp $'\nНатисніть Enter для повернення до меню... ' _
+}
+
+tail_debug_logs() {
+  read -rp "Введіть ваш NODE ID (debug-loop): " NODE_ID
+  local HOST_LOG_DIR="${HOST_LOG_ROOT}/${NODE_ID}"
+  if [[ -f "${HOST_LOG_DIR}/nexus.log" ]]; then
+    sudo tail -n 200 -f "${HOST_LOG_DIR}/nexus.log"
+  else
+    err "Файл логів не знайдено: ${HOST_LOG_DIR}/nexus.log"
+  fi
+}
+
+# -------------------- МЕНЮ --------------------
+
 while true; do
   clear
-  echo "==== Nexus Node Manager (мульти-ноди, автоперезапуск, SWAP, діагностика, loop) ===="
-  echo "1) 🟢 Встановити нову ноду (звичайний режим)"
-  echo "2) 🔄 Оновити ноду"
-  echo "3) 📄 Переглянути логи"
-  echo "4) 🗑️  Видалити ноду"
-  echo "5) ▶️  Запустити/attach до ноди"
-  echo "6) 📋 Список запущених нод"
-  echo "7) 🔎 Перевірити версію CLI"
-  echo "8) 💾 Увімкнути SWAP (${SWAP_SIZE_GB}G)"
-  echo "9) 🧪 Діагностика ноди"
-  echo "10) 🔁 Встановити ноду в LOOP‑режимі (кастомний образ)"
-  echo "11) ❌ Вийти"
-  echo "----------------------------------------------------------------------------"
+  echo "==== Nexus Node Manager (мульти-ноди, SWAP, діагностика, loop і debug-loop) ===="
+  echo "1) Встановити нову ноду"
+  echo "2) Оновити ноду"
+  echo "3) Переглянути логи контейнера"
+  echo "4) Видалити ноду"
+  echo "5) Запустити або підключитися до ноди (attach)"
+  echo "6) Список запущених нод"
+  echo "7) Перевірити версію CLI"
+  echo "8) Увімкнути SWAP (${SWAP_SIZE_GB}G)"
+  echo "9) Діагностика ноди"
+  echo "10) Loop-режим (кастомний образ)"
+  echo "11) Debug-loop (нескінченний запуск і логи у файл)"
+  echo "12) Перегляд логів Debug-loop (tail)"
+  echo "13) Вийти"
+  echo "--------------------------------------------------------------------------"
   read -rp "Оберіть опцію: " choice
 
   case "$choice" in
@@ -249,7 +322,9 @@ while true; do
     8) make_swap ;;
     9) diagnose_node ;;
     10) setup_loop_mode ;;
-    11) echo "👋 Вихід..."; exit 0 ;;
+    11) setup_debug_loop_mode ;;
+    12) tail_debug_logs ;;
+    13) echo "Вихід..."; exit 0 ;;
     *) err "Невірна опція!"; sleep 2 ;;
   esac
 done
